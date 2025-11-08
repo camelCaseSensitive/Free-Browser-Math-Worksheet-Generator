@@ -96,7 +96,7 @@
 
     <div class="field">
       <label>Font size (px)</label>
-      <input id="fontSize" type="number" min="12" max="72" value="66" />
+      <input id="fontSize" type="number" min="12" max="72" value="32" />
     </div>
 
     <div class="field">
@@ -110,8 +110,8 @@
     <div class="field">
       <label>Bottom number range (min / max)</label>
       <div class="row">
-        <input id="botMin" type="number" value="1" />
-        <input id="botMax" type="number" value="9" />
+        <input id="botMin" type="number" value="10" />
+        <input id="botMax" type="number" value="99" />
       </div>
     </div>
 
@@ -250,95 +250,110 @@
 
   function calc(a,b,op){ return op==='+'?a+b:op==='-'?a-b:a*b; }
 
-  function renderPage(probs,cfg,withAns){
-    const {paper,cols,rows,fontSize,title} = cfg;
-    const W=paper.wPx, H=paper.hPx;
-    const c=document.createElement('canvas'); c.width=W; c.height=H;
-    const g=c.getContext('2d');
+function renderPage(probs, cfg, withAns) {
+  const { paper, cols, rows, fontSize, title } = cfg;
+  const W = paper.wPx, H = paper.hPx;
+  const c = document.createElement('canvas'); 
+  c.width = W; 
+  c.height = H;
+  const g = c.getContext('2d');
 
-    g.fillStyle='#fff'; g.fillRect(0,0,W,H);
-    g.fillStyle='#000';
+  g.fillStyle = '#fff'; 
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = '#000';
 
-    const margin = Math.round(W*0.06);
-    const headerH = Math.round(H*0.11);
+  const margin = Math.round(W * 0.06);
+  const headerH = Math.round(H * 0.11);
 
-    g.font = `${Math.round(headerH*0.18)}px Arial`;
-    let yLine = margin + Math.round(headerH*0.55);
-    g.fillText('Name: ____________________', margin, yLine);
-    const dt='Date: ____________________';
-    g.fillText(dt, W-margin-g.measureText(dt).width, yLine);
+  // Header
+  g.font = `${Math.round(headerH * 0.18)}px Arial`;
+  let yLine = margin + Math.round(headerH * 0.55);
+  g.fillText('Name: ____________________', margin, yLine);
+  const dt = 'Date: ____________________';
+  g.fillText(dt, W - margin - g.measureText(dt).width, yLine);
 
-    g.font = `${Math.round(headerH*0.25)}px Arial`;
-    const ttl = title || (withAns?'Answer Sheet':'Math Worksheet');
-    g.fillText(ttl,(W-g.measureText(ttl).width)/2, margin+Math.round(headerH*0.2));
+  g.font = `${Math.round(headerH * 0.25)}px Arial`;
+  const ttl = title || (withAns ? 'Answer Sheet' : 'Math Worksheet');
+  g.fillText(ttl, (W - g.measureText(ttl).width) / 2, margin + Math.round(headerH * 0.2));
 
-    const areaX=margin, areaY=margin+headerH, areaW=W-2*margin, areaH=H-areaY-margin;
-    const colW=Math.floor(areaW/cols), rowH=Math.floor(areaH/rows);
+  // Workspace grid
+  const areaX = margin, areaY = margin + headerH;
+  const areaW = W - margin * 2, areaH = H - areaY - margin;
+  const colW = Math.floor(areaW / cols), rowH = Math.floor(areaH / rows);
 
-    const numFS = fontSize;
-    const symFS = fontSize;
-    const ansFS = Math.floor(fontSize*0.8);
-    const mono='Courier New, Courier, monospace';
+  const numFS = fontSize;
+  const symFS = fontSize;
+  const ansFS = Math.floor(fontSize * 0.8);
+  const mono = 'Courier New, Courier, monospace';
 
-    let i=0;
-    for(let cIdx=0;cIdx<cols;cIdx++){
-      for(let rIdx=0;rIdx<rows;rIdx++){
-        if(i>=probs.length) break;
-        const p=probs[i++];
+  let i = 0;
+  for (let cIdx = 0; cIdx < cols; cIdx++) {
+    for (let rIdx = 0; rIdx < rows; rIdx++) {
+      if (i >= probs.length) break;
+      const p = probs[i++];
 
-        const x0=areaX + cIdx*colW;
-        const y0=areaY + rIdx*rowH;
+      const x0 = areaX + cIdx * colW;
+      const y0 = areaY + rIdx * rowH;
 
-        // Compute max width of the problem block for centering
-        g.font = `${numFS}px ${mono}`;
-        const topW = g.measureText(String(p.top)).width;
-        const botW = g.measureText(String(p.bot)).width;
-        const maxW = Math.max(topW, botW) * 1.15;
-        const rightX = x0 + (colW / 2) + (maxW / 2); // center alignment
-        let currY = y0 + fontSize*1.1; // top aligned
+      // Measure text widths for centering
+      g.font = `${numFS}px ${mono}`;
+      const topStr = String(p.top);
+      const botStr = String(p.bot);
+      const topW = g.measureText(topStr).width;
+      const botW = g.measureText(botStr).width;
+      const maxW = Math.max(topW, botW);
 
-        // Top number
-        g.font = `${numFS}px ${mono}`;
-        g.textAlign='right';
-        g.fillText(String(p.top), rightX, currY);
+      // Entire problem is top-centered within the cell
+      const rightX = x0 + (colW / 2) + (maxW / 2);
+      let currY = y0 + numFS * 1.1;
 
-        // Bottom number width
-        g.font = `${numFS}px ${mono}`;
-        const botStr = String(p.bot);
-        const botWidth = g.measureText(botStr).width;
+      // Top number (right-aligned)
+      g.font = `${numFS}px ${mono}`;
+      g.textAlign = 'right';
+      g.fillText(topStr, rightX, currY);
 
-        // Symbol just left of bottom number
-        const botY = currY + fontSize*1.2;
-        const gap = fontSize * 0.25;
-        g.font = `${symFS}px ${mono}`;
-        g.textAlign='left';
-        const symX = rightX - botWidth - gap - g.measureText(p.op).width;
-        g.fillText(p.op, symX, botY);
+      // Bottom placement
+      const botY = currY + numFS * 1.2;
+      const gap = numFS * 0.25;
 
-        // Bottom number
-        g.font = `${numFS}px ${mono}`;
-        g.textAlign='right';
-        g.fillText(botStr, rightX, botY);
+      // Compute line start & end
+      const firstDigitLeft = rightX - topW;
+      const lineStart = firstDigitLeft - gap; 
+      const lineEnd = rightX;
 
-        // Line
-        const lineY = botY + fontSize*0.25;
-        const lineLeft = rightX - botWidth - gap;
-        g.lineWidth = Math.max(2,Math.floor(fontSize*0.08));
-        g.beginPath();
-        g.moveTo(lineLeft, lineY);
-        g.lineTo(rightX, lineY);
-        g.stroke();
+      // Operation symbol left of the line
+      g.font = `${symFS}px ${mono}`;
+      const symW = g.measureText(p.op).width;
+      const symX = lineStart - symW - gap;
+      g.textAlign = 'left';
+      g.fillText(p.op, symX, botY);
 
-        // Answer
-        if(withAns){
-          g.font = `${ansFS}px ${mono}`;
-          g.textAlign='right';
-          g.fillText(String(p.ans), rightX, lineY + ansFS*1.2);
-        }
+      // Bottom number (right-aligned)
+      g.font = `${numFS}px ${mono}`;
+      g.textAlign = 'right';
+      g.fillText(botStr, rightX, botY);
+
+      // Horizontal line
+      const lineY = botY + numFS * 0.25;
+      g.lineWidth = Math.max(2, Math.floor(numFS * 0.08));
+      g.beginPath();
+      g.moveTo(lineStart, lineY);
+      g.lineTo(lineEnd, lineY);
+      g.stroke();
+
+      // Answer (right-aligned, below line)
+      if (withAns) {
+        g.font = `${ansFS}px ${mono}`;
+        g.textAlign = 'right';
+        g.fillText(String(p.ans), rightX, lineY + ansFS * 1.2);
       }
     }
-    return {canvas:c};
   }
+
+  return { canvas: c };
+}
+
+
 
   function downloadPDF(includeAns){
     if(!lastSheet){ status('Generate first.',true); return; }
